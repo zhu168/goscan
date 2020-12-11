@@ -17,18 +17,18 @@ var ScanimageUse = false
 func main() {
 	app := iris.New()
 	app.Get("/", func(ctx iris.Context) {
-		ctx.HTML("<h1>Hello World!</h1>")
+		ctx.HTML(`<h1><a href="/goscan/">goscan</a></h1>`)
 	})
 	app.Get("/goscan/", func(ctx iris.Context) {
 		ctx.HTML(`
-		<h1>goscan</h1>
-		<button onclick="scan();">scan</button>
-		<button onclick="location.href='/goscan/downloadimg/'">download</button>
-		<br>
-		<div style="width:400px;">
-		<img src="/goscan/viewimg/" id="viewimg" style="width:400px;height:auto;display:inline-block;" />
-		</div>
-		<script type="text/javascript">
+<h1>goscan</h1>
+<button onclick="scan();">scan</button>
+<button onclick="location.href='/goscan/downloadimg/'">download</button>
+<br>
+<div style="width:400px;">
+<img src="/goscan/viewimg/" id="viewimg" style="width:400px;height:auto;display:inline-block;" />
+</div>
+<script type="text/javascript">
 function scan(){
 	var xhr = new XMLHttpRequest();
 	xhr.open('GET', '/goscan/scan', false);
@@ -39,9 +39,8 @@ function scan(){
 	};
 	xhr.send();
 }
-		</script>
+</script>
 		`)
-
 	})
 	app.Get("/goscan/scan", func(ctx iris.Context) {
 		ScanimageUseLock.Lock()
