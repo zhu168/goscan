@@ -13,3 +13,10 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+go.sum
+goscan
+shoutdown.sh
+dist
+update_server.sh
+startup.sh
+.DS_Store
