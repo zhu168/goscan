@@ -57,17 +57,16 @@ function scan(){
 		`)
 	})
 	app.Get("/goscan/scan", func(ctx iris.Context) {
-		ScanimageUseLock.Lock()
 		if ScanimageUse {
-			ScanimageUseLock.Unlock()
 			ctx.Application().Logger().Error("scanner is busy")
 			ctx.JSON("error：scanner is busy,please wait a litter re try.")
 			return
 		}
-		ScanimageUseLock.Unlock()
+		ScanimageUseLock.Lock()
 		ScanimageUse = true
 		defer func() {
 			ScanimageUse = false
+			ScanimageUseLock.Unlock()
 		}()
 		command := `sudo scanimage -d 'hpaio:/usb/HP_LaserJet_M1005?serial=KJ6NYS4' --format jpeg --mode color --resolution 200 > ./scan.jpg`
 		cmd := exec.Command("/bin/bash", "-c", command)
@@ -80,7 +79,6 @@ function scan(){
 		ctx.Application().Logger().Debug("Execute Shell:%s finished with output:\n%s", command, string(output))
 		ctx.JSON("error")
 		ctx.JSON("ok")
-		return
 	})
 	app.Get("/goscan/viewimg/", func(ctx iris.Context) {
 		// ctx.Application().Logger().Info("viewimg")
@@ -88,19 +86,22 @@ function scan(){
 		imgname := "scan" //ctx.Params().Get("imgname")
 
 		b, err := ioutil.ReadFile("./" + imgname + ".jpg")
+		if err != nil {
+			ctx.Application().Logger().Error(err)
+			ctx.HTML(`<h1>error</h1>`)
+			return
+		}
 		_, err = ctx.Write(b)
 		if err != nil {
 			ctx.Application().Logger().Error(err)
 			ctx.HTML(`<h1>error</h1>`)
 			return
 		}
-		return
 	})
 	app.Get("/goscan/downloadimg/", func(ctx iris.Context) {
 		ctx.Application().Logger().Info("viewimg")
 		imgname := "scan" //ctx.Params().Get("imgname")
 		ctx.SendFile("./"+imgname+".jpg", imgname+".jpg")
-		return
 	})
 	app.Listen(":3031")
 }
