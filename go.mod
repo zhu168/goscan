@@ -1,8 +1,8 @@
 module github.com/zhu168/goscan
 
-go 1.15
+go 1.17
 
 require (
-	github.com/kataras/iris/v12 v12.1.8
-	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
+	github.com/julienschmidt/httprouter v1.3.1-0.20200921135023-fe77dd05ab5a // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )

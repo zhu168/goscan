@@ -20,3 +20,4 @@ dist
 update_server.sh
 startup.sh
 .DS_Store
+goscan.log

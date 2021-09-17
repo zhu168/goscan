@@ -1,26 +1,68 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"io/ioutil"
+	"net/http"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync"
+	"time"
 
-	"github.com/kataras/iris/v12"
+	"log"
+
+	"github.com/julienschmidt/httprouter"
+	"gopkg.in/yaml.v2"
 )
+
+//Config Config
+type Config struct {
+	ScannerCMD          string `yaml:"ScannerCMD"`
+	BaseAuth            bool   `yaml:"BaseAuth"`
+	BaseAuthUser        string `yaml:"BaseAuthUser"`
+	BaseAuthPasswd      string `yaml:"BaseAuthPasswd"`
+	BaseAuthSuperUser   string `yaml:"BaseAuthSuperUser"`
+	BaseAuthSuperPasswd string `yaml:"BaseAuthSuperPasswd"`
+}
+
+var GlobelConfig Config
+var logger *log.Logger
 
 // ScanimageUseLock ScanimageUseLock
 var ScanimageUseLock sync.Mutex
 
 // ScanimageUse ScanimageUse
 var ScanimageUse = false
+var CP string
 
 func main() {
-	app := iris.New()
-	app.Get("/", func(ctx iris.Context) {
-		ctx.HTML(`<h1><a href="/goscan/">goscan</a></h1>`)
+	var err error
+	CP, err = GetCurrentPath()
+	if err != nil {
+		log.Fatalln("fail to lookPath args 0!")
+		return
+	}
+	err = LoadConfig()
+	if err != nil {
+		log.Fatalln("fail to LoadConfig!")
+		return
+	}
+	file, err := os.Create(CP + "/goscan.log")
+	if err != nil {
+		log.Fatalln("fail to create test.log file!")
+		return
+	}
+	logger = log.New(file, "", log.LstdFlags|log.Llongfile)
+	router := httprouter.New()
+
+	router.GET("/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprint(w, `<h1><a href="/goscan/">goscan</a></h1>`)
 	})
-	app.Get("/goscan/", func(ctx iris.Context) {
-		ctx.HTML(`
+	router.GET("/goscan/", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+		fmt.Fprint(w, `
 <!DOCTYPE html>
 <html>
 <head>
@@ -31,11 +73,12 @@ func main() {
 <body>
 <h1>goscan</h1>
 <button id="scanbtn" onclick="scan();"> scan </button>
-<button onclick="location.href='/goscan/downloadimg/'"> download </button>
+<button id="downloadbtn" onclick="download();"> download </button>
 <br>
 <div style="width:400px;">
-<img src="/goscan/viewimg/" id="viewimg" style="width:400px;height:auto;display:inline-block;" />
+<img src="" id="viewimg" style="width:400px;height:auto;display:inline-block;" />
 </div>
+<input type="hidden" id="filename" value="" />
 <script type="text/javascript">
 function scan(){
 	document.getElementById('scanbtn').disabled='true';
@@ -44,22 +87,34 @@ function scan(){
 	xhr.open('GET', '/goscan/scan', true);
 	xhr.onreadystatechange = function() {
 		if(xhr.readyState == 4 && xhr.status == 200){
-			document.getElementById('viewimg').src='/goscan/viewimg/'+'?'+new Date();
+			var res = xhr.response;
+			var content = 'response' in xhr ? xhr.response : xhr.responseText
+			if (content == 'err'){
+				alert('err');
+				return;
+			}else{
+				document.getElementById('filename').value=res;
+				document.getElementById('viewimg').src='/goscan/viewimg/'+content;
+				return;
+			}
 		}
 		document.getElementById('scanbtn').disabled='';
 		document.getElementById('scanbtn').innerHTML=" scan ";
 	};
 	xhr.send();
 }
+function download(){
+	location.href="/goscan/downloadimg/"+document.getElementById('filename').value;
+}
 </script>
 </body>
 </html>
-		`)
+`)
 	})
-	app.Get("/goscan/scan", func(ctx iris.Context) {
+	router.GET("/goscan/scan", func(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 		if ScanimageUse {
-			ctx.Application().Logger().Error("scanner is busy")
-			ctx.JSON("error：scanner is busy,please wait a litter re try.")
+			logger.Fatalln("scanner is busy")
+			fmt.Fprint(w, `error：scanner is busy,please wait a litter re try.`)
 			return
 		}
 		ScanimageUseLock.Lock()
@@ -68,40 +123,87 @@ function scan(){
 			ScanimageUse = false
 			ScanimageUseLock.Unlock()
 		}()
-		command := `sudo scanimage -d 'hpaio:/usb/HP_LaserJet_M1005?serial=KJ6NYS4' --format jpeg --mode color --resolution 200 > ./scan.jpg`
+		filename := time.Now().Format("2006-01-02-15-04-05") + ".jpg"
+		pathname := CP + "/imgs/" + filename
+		command := fmt.Sprintf(GlobelConfig.ScannerCMD, pathname)
 		cmd := exec.Command("/bin/bash", "-c", command)
 		output, err := cmd.Output()
 		if err != nil {
-			ctx.Application().Logger().Error("Execute Shell:%s failed with error:%s", command, err.Error())
-			ctx.JSON("error")
+			logger.Fatalf("Execute Shell:%s %sfailed with error:%s", command, output, err.Error())
+			fmt.Fprint(w, `error`)
 			return
 		}
-		ctx.Application().Logger().Debug("Execute Shell:%s finished with output:\n%s", command, string(output))
-		ctx.JSON("error")
-		ctx.JSON("ok")
+		// logger.Printf("Execute Shell:%s finished with output:\n%s", command, string(output))
+		// fmt.Fprint(w, `error`)
+		fmt.Fprint(w, filename)
 	})
-	app.Get("/goscan/viewimg/", func(ctx iris.Context) {
-		// ctx.Application().Logger().Info("viewimg")
-
-		imgname := "scan" //ctx.Params().Get("imgname")
-
-		b, err := ioutil.ReadFile("./" + imgname + ".jpg")
+	router.GET("/goscan/viewimg/:filename", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		filename := p.ByName("filename")
+		b, err := ioutil.ReadFile(CP + "/imgs/" + filename)
 		if err != nil {
-			ctx.Application().Logger().Error(err)
-			ctx.HTML(`<h1>error</h1>`)
+			logger.Fatalln(err)
+			fmt.Fprint(w, `<h1>error</h1>`)
 			return
 		}
-		_, err = ctx.Write(b)
+		_, err = w.Write(b)
 		if err != nil {
-			ctx.Application().Logger().Error(err)
-			ctx.HTML(`<h1>error</h1>`)
+			logger.Fatalln(err)
+			fmt.Fprint(w, `<h1>error</h1>`)
 			return
 		}
 	})
-	app.Get("/goscan/downloadimg/", func(ctx iris.Context) {
-		ctx.Application().Logger().Info("viewimg")
-		imgname := "scan" //ctx.Params().Get("imgname")
-		ctx.SendFile("./"+imgname+".jpg", imgname+".jpg")
+	router.GET("/goscan/downloadimg/:filename", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		filename := p.ByName("filename")
+		b, err := ioutil.ReadFile(CP + "/imgs/" + filename)
+		if err != nil {
+			logger.Fatalln(err)
+			fmt.Fprint(w, `<h1>error</h1>`)
+			return
+		}
+		w.Header().Add("Content-Disposition", "attachment;filename = "+filename)
+		_, err = w.Write(b)
+		if err != nil {
+			logger.Fatalln(err)
+			fmt.Fprint(w, `<h1>error</h1>`)
+			return
+		}
 	})
-	app.Listen(":3031")
+	router.ServeFiles("/goscan/imgs/*filepath", http.Dir(CP+"/imgs"))
+	http.ListenAndServe(":3031", router)
+}
+
+func GetCurrentPath() (result string, err error) {
+	file, err := exec.LookPath(os.Args[0])
+	if err != nil {
+		return
+	}
+	path, err := filepath.Abs(file)
+	if err != nil {
+		return
+	}
+	i := strings.LastIndex(path, "/")
+	if i < 0 {
+		i = strings.LastIndex(path, "\\")
+	}
+	if i < 0 {
+		err = errors.New(`error: Can't find "/" or "\"`)
+		return
+	}
+	result = string(path[0 : i+1])
+	return
+}
+
+func LoadConfig() (err error) {
+	var b []byte
+	b, err = ioutil.ReadFile(CP + "/config.yaml")
+	if err != nil {
+		logger.Fatal(err)
+		return
+	}
+	err = yaml.Unmarshal(b, &GlobelConfig)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	//log.Printf("config:%#v", GlobelConfig)
+	return
 }

@@ -1,0 +1,4 @@
+ScannerCMD: sudo scanimage -d 'hpaio:/usb/HP_LaserJet_M1005?serial=KJ6NYS4' --format jpeg --mode color --resolution 200 > %s
+BaseAuth: false
+BaseAuthUser: z
+BaseAuthPasswd: zzz
