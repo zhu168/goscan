@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>goscan</title>
+</head>
+<body>
+<h1>goscan</h1>
+<button id="scanbtn" onclick="scan();"> scan </button>
+<button id="downloadbtn" onclick="download();"> download </button>
+<a href="/goscan/imgs/monthlist" target="imgs">history imgs</a>
+<br>
+<div style="width:400px;">
+<img src="" id="viewimg" style="width:400px;height:auto;display:inline-block;" />
+</div>
+<input type="hidden" id="filename" value="" />
+<script type="text/javascript">
+function scan(){
+	document.getElementById('scanbtn').disabled='true';
+	document.getElementById('scanbtn').innerHTML=" scaning... ";
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', '/goscan/scan', true);
+	xhr.onreadystatechange = function() {
+		if(xhr.readyState == 4 && xhr.status == 200){
+			var res = xhr.response;
+			var content = 'response' in xhr ? xhr.response : xhr.responseText
+			if (content.indexOf('err') != -1){
+				alert(content);
+				return;
+			}else{
+				document.getElementById('filename').value=res;
+				document.getElementById('viewimg').src='/goscan/viewimg/'+content;
+				return;
+			}
+		}
+		document.getElementById('scanbtn').disabled='';
+		document.getElementById('scanbtn').innerHTML=" scan ";
+	};
+	xhr.send();
+}
+function download(){
+	var filename=document.getElementById('filename').value;
+	if (filename ==''){
+		alert("Can't download,you must be scan before.");
+		return;
+	}
+	location.href="/goscan/downloadimg/"+filename;
+}
+</script>
+</body>
+</html>

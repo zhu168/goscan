@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>goscan</title>
+</head>
+<body>
+<h1>goscan history - select month</h1>
+
+<pre>
+{{range $i, $v := .files}}
+<a href="../imgs/list/{{$v.Name}}">💼 {{$v.Name}}</a>
+{{end}}
+</pre>
+
+<script type="text/javascript">
+function remove(filename){
+	if (filename.length != 23){
+		alert("File name error!");
+		return;
+	}
+	if(!confirm('Are you sure you want to delete it?')){
+		return;
+	}
+	var xhr = new XMLHttpRequest();
+	xhr.open('GET', '/goscan/imgs/rm/'+filename, true);
+	xhr.onreadystatechange = function() {
+		if(xhr.readyState == 4 && xhr.status == 200){
+			var res = xhr.response;
+			var content = 'response' in xhr ? xhr.response : xhr.responseText
+			if (content=="ok"){
+				location.reload();
+				return;
+			}else{
+				alert(content);
+				return;
+			}
+		}
+		document.getElementById('scanbtn').disabled='';
+		document.getElementById('scanbtn').innerHTML=" scan ";
+	};
+	xhr.send();
+}
+</script>
+</body>
+</html>
