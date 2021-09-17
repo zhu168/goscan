@@ -20,6 +20,7 @@ import (
 
 //Config Config
 type Config struct {
+	ListenAndServe      string `yaml:"ListenAndServe"`
 	ScannerCMD          string `yaml:"ScannerCMD"`
 	BaseAuth            bool   `yaml:"BaseAuth"`
 	BaseAuthUser        string `yaml:"BaseAuthUser"`
@@ -169,7 +170,7 @@ function download(){
 		}
 	})
 	router.ServeFiles("/goscan/imgs/*filepath", http.Dir(CP+"/imgs"))
-	http.ListenAndServe(":3031", router)
+	http.ListenAndServe(GlobelConfig.ListenAndServe, router)
 }
 
 func GetCurrentPath() (result string, err error) {
