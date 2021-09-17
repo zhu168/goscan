@@ -91,8 +91,8 @@ function scan(){
 		if(xhr.readyState == 4 && xhr.status == 200){
 			var res = xhr.response;
 			var content = 'response' in xhr ? xhr.response : xhr.responseText
-			if (content == 'err'){
-				alert('err');
+			if (content.indexOf('err') != -1){
+				alert(content);
 				return;
 			}else{
 				document.getElementById('filename').value=res;
