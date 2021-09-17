@@ -75,6 +75,7 @@ func main() {
 <h1>goscan</h1>
 <button id="scanbtn" onclick="scan();"> scan </button>
 <button id="downloadbtn" onclick="download();"> download </button>
+<a href="/goscan/imgs/" target="imgs">history imgs</a>
 <br>
 <div style="width:400px;">
 <img src="" id="viewimg" style="width:400px;height:auto;display:inline-block;" />
@@ -105,7 +106,12 @@ function scan(){
 	xhr.send();
 }
 function download(){
-	location.href="/goscan/downloadimg/"+document.getElementById('filename').value;
+	var filename=document.getElementById('filename').value;
+	if (filename ==''){
+		alert("Can't download,you must be scan before.");
+		return;
+	}
+	location.href="/goscan/downloadimg/"+filename;
 }
 </script>
 </body>
