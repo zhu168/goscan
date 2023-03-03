@@ -321,7 +321,6 @@ func LoadConfig() (err error) {
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-	//log.Printf("config:%#v", GlobelConfig)
 	return
 }
 
@@ -360,7 +359,6 @@ func DirNameCheck(dirname string) (err error) {
 func Tpl(w http.ResponseWriter, tplname string, data interface{}) (err error) {
 	basedir := "web/templates"
 	tpl, err := template.ParseFS(templatesFS, basedir+tplname)
-	// tpl, err := template.ParseFiles(basedir + tplname)
 	if err != nil {
 		return
 	}
