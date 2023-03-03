@@ -24,7 +24,7 @@ import (
 //go:embed web/templates
 var templatesFS embed.FS
 
-//Config Config
+// Config Config
 type Config struct {
 	ListenAndServe      string `yaml:"ListenAndServe"`
 	ScannerCMD          string `yaml:"ScannerCMD"`
@@ -110,8 +110,6 @@ func main() {
 			fmt.Fprint(w, `error`)
 			return
 		}
-		// logger.Printf("Execute Shell:%s finished with output:\n%s", command, string(output))
-		// fmt.Fprint(w, `error`)
 		fmt.Fprint(w, filename)
 	})
 	RouterAddGET(router, "user", "/goscan/viewimg/:filename", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
